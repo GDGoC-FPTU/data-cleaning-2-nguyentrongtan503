@@ -1,57 +1,67 @@
 import json
+import os
 
 def mask_email(email):
     """
-    TODO: Implement this function.
-    Masks the email address by keeping the first character of the username 
-    and adding '***' before the domain.
-    Example: vana@gmail.com -> v***@gmail.com
+    Masks the email field: e.g., vana@gmail.com -> v***@gmail.com
     """
-    # Your code here
-    pass
+    if not email or '@' not in email:
+        return email
+    parts = email.split('@')
+    # Requirement: first character + *** + @ + domain
+    return parts[0][0] + "***@" + parts[1]
 
-def clean_data(input_file, output_file):
-    # Load the toxic data
+def clean_toxic_data():
+    # Define file paths based on lab instructions
+    # Primary path: morning_v2/toxic_sample.json
+    input_path = os.path.join("morning_v2", "toxic_sample.json")
+    if not os.path.exists(input_path):
+        input_path = "toxic_sample.json" # Fallback to root
+        
+    output_path = "sanitized_sample.json"
+
     try:
-        # TODO: Load data from input_file (json)
-        data = [] 
+        with open(input_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
     except FileNotFoundError:
-        print(f"Error: {input_file} not found.")
+        print(f"Error: Input file {input_path} not found.")
         return
     except json.JSONDecodeError:
-        print(f"Error: Failed to decode JSON from {input_file}.")
+        print(f"Error: Failed to decode JSON from {input_path}.")
         return
 
-    seen_ids = set()
     sanitized_data = []
+    seen_ids = set()
 
     for item in data:
-        # 1. Deduplication: Ensure each id only appears once
-        # TODO: Check if item['id'] is already in seen_ids. If yes, skip it.
+        # Challenge 2: Deduplication (Ensure each id only appears once)
+        item_id = item.get('id')
+        if item_id is None or item_id in seen_ids:
+            continue
         
-        # 2. Outlier Check: Remove any item with price > $5,000
-        # TODO: Get price and check if it's > 5000. If yes, skip it.
-            
-        # 3. Sanity Check: Remove any item with price < 0
-        # TODO: Check if price is < 0. If yes, skip it.
+        # Challenge 2: Outliers and Sanity Check
+        price = item.get('price')
+        # Remove items with price > $5,000 or price < 0
+        if price is None or price > 5000 or price < 0:
+            continue
 
-        # 4. PII Masking: Remove name and mask email
+        # Challenge 1: PII Masking
+        # 1. Remove the 'name' field completely
+        if 'name' in item:
+            del item['name']
         
-        # TODO: Remove the 'name' field from the item
-            
-        # TODO: Mask the 'email' field using the mask_email function
-            
-        # Add to cleaned list and track ID
+        # 2. Mask the 'email' field
+        if 'email' in item:
+            item['email'] = mask_email(item['email'])
+
         sanitized_data.append(item)
-        # seen_ids.add(...)
+        seen_ids.add(item_id)
 
-    # Save the sanitized data
-    # TODO: Write sanitized_data to output_file with indent=4
-    print(f"Successfully sanitized data. Output saved to {output_file}")
-    print(f"Original records: {len(data)}")
-    print(f"Sanitized records: {len(sanitized_data)}")
+    # Final Verification: Output sanitized_sample.json
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(sanitized_data, f, indent=4)
+    
+    print(f"Success! {len(sanitized_data)} records sanitized and saved to {output_path}")
 
 if __name__ == "__main__":
-    INPUT_PATH = "toxic_sample.json"
-    OUTPUT_PATH = "sanitized_sample.json"
-    clean_data(INPUT_PATH, OUTPUT_PATH)
+    clean_toxic_data()
